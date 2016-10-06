@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>IndexedDB - deleting items</title>
+
+	<style>
+		body {
+			font-family: verdana, arial, helvetica, sans-serif;
+			font-size: 75%;
+		}
+
+		#form {
+			margin: 0 0 10px 0;
+		}
+
+		input[type=text] {
+			width: 200px;
+		}
+
+		#no-data-row td,
+		tfoot td {
+			font-family: monospace;
+			padding: 10px;
+		}
+
+		td.idx {
+			text-align: right;
+		}
+
+		td.text {
+			padding: 0 0 0 20px;
+		}
+
+		.btn {
+			cursor: pointer;
+		}
+
+		img {
+			margin: 0 5px 0 0;
+		}
+	</style>
+
+	<script src="js/utilities.js"></script>
+	<script src="js/Document.js"></script>
+
+	<script src="js/vendor/jquery/jquery-2.2.3.js"></script>
+	<script src="js/Database.js"></script>
+
+	<script>
+		function addTableRow(key, text) {
+			var $tableCellKey, $tableCellText, $tableCellActions;
+			var $delIcon, $edtIcon;
+			var $tableRow;
+
+			var keyCellId = 'idb-entry-' + key;
+
+			if (!Document.elementExists(keyCellId)) {
+				$tableCellKey = createTableCell()
+					.text(key)
+					.attr('class', 'idx')
+					.attr('id', keyCellId);
+
+				$tableCellText = createTableCell()
+					.text(text)
+					.attr('class', 'text');
+
+				$edtIcon = createImg('img/pencil.png')
+					.attr('class', 'btn btn-edit')
+					.attr('id', 'edt-' + key)
+					.attr('data-key', key);
+
+				$delIcon = createImg('img/delete.png')
+					.attr('class', 'btn btn-delete')
+					.attr('id', 'del-' + key)
+					.attr('data-key', key);
+
+				$tableCellActions = createTableCell()
+					.append($edtIcon)
+					.append($delIcon);
+
+				$tableRow = createTableRow('data-row')
+					.append($tableCellKey)
+					.append($tableCellText)
+					.append($tableCellActions)
+					.attr('id', 'data-row-' + key);
+
+				$('#table-cnt').append($tableRow);
+				$('#no-data-row').hide();
+			}
+		}
+
+		function updateTableRow(key, text) {
+			var rowId = 'data-row-'+key;
+			if (Document.elementExists(rowId)) {
+				$('#'+rowId).find('.text').text(text);
+			}
+		}
+
+		function initShowButton() {
+			$('#show-data').on('click', function () {
+				Database.getAllItems(function (item) {
+					addTableRow(item.key, item.text);
+				});
+
+				window.setTimeout(function () {
+					initEditButton();
+					initDeleteButtons();
+				}, 100);
+			});
+		}
+
+		function initEditButton() {
+			$('.btn-edit').on('click', function () {
+				var key  = $(this).data('key');
+
+				Database.findItem(key, function (result) {
+					$('#key').val(result.key);
+					$('#some-data').val(result.text);
+				});
+			});
+		}
+
+		function initSaveButton() {
+			$('#save-button').on('click', function () {
+				var item, isUpdate;
+				var someKey = $('#key').val();
+				var someText = $('#some-data').val();
+
+				if ('' === someText) {
+					return;
+				}
+
+				item = {
+					text: someText
+				};
+
+				if (! isEmpty(someKey)) {
+					item.key = someKey;
+					isUpdate = true;
+				}
+
+				Database.save(item, function (insertId) {
+					if (isUpdate) {
+						updateTableRow(insertId, someText);
+					}
+					else {
+						Database.findItem(insertId, function (result) {
+							addTableRow(result.key, result.text);
+
+							$('#key').val('');
+							$('#some-data').val('');
+						});
+					}
+				});
+			});
+		}
+
+		function initDeleteButtons() {
+			$('.btn-delete').on('click', function () {
+				var key = $(this).data('key');
+
+				Database.delete(key, function () {
+					$('#data-row-' + key).remove();
+				});
+			});
+		}
+
+
+		$(document).ready(function () {
+			Database.init('foomy-test', 4);
+			Database.setObjectStoreName('foobar-contents');
+
+			initSaveButton();
+			initShowButton();
+		});
+	</script>
+</head>
+
+<body>
+<div id="form">
+	<input type="hidden" id="key">
+	<input type="text" id="some-data" placeholder="Type some weird text here...">
+	<button id="save-button">... and save it!</button>
+</div>
+
+<div id="data-list">
+
+	<table id="data-list-table">
+		<thead>
+		<tr>
+			<th>#</th>
+			<th>text</th>
+			<th>actions</th>
+		</tr>
+		</thead>
+		<tfoot>
+		<tr>
+			<td colspan="3">(Hier könnte Ihre Werbung stehen.)</td>
+		</tr>
+		</tfoot>
+		<tbody id="table-cnt">
+		<tr id="no-data-row">
+			<td colspan="3">Keine Daten da.
+				<button id="show-data">Show 'em all!</button>
+			</td>
+		</tr>
+		</tbody>
+	</table>
+</div>
+</body>
+</html>

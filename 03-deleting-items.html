@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>IndexedDB - deleting items</title>
+
+	<style>
+		#form {
+			margin: 0 0 10px 0;
+		}
+
+		input[type=text] {
+			width: 200px;
+		}
+
+		#no-data-row td,
+		tfoot td {
+			padding: 10px;
+		}
+
+		td.idx {
+			text-align: right;
+		}
+
+		td.text {
+			padding: 0 0 0 20px;
+		}
+	</style>
+
+	<script src="js/utilities.js"></script>
+
+	<script src="js/vendor/jquery/jquery-2.2.3.js"></script>
+	<script src="js/Local.js"></script>
+	<script src="js/Database.js"></script>
+
+	<script>
+		function htmlElementExists (elementId) {
+			return ($('#'+elementId).length > 0);
+		}
+
+		function initSaveButton() {
+			$('#save-button').on('click', function () {
+				var item,
+					someText = $('#some-data').val();
+
+				if ('' === someText) {
+					return;
+				}
+
+				item = {
+					text: someText
+				};
+
+				Database.insert(item, function (event) {
+					console.log('Eintrag ' + event.target.result + ' gespeichert.');
+					$('#some-data').val('');
+				});
+			});
+		}
+
+		function initShowButton() {
+			$('#show-data').on('click', function () {
+				Database.getAllItems(function (result) {
+					var $tableRow         = $('<tr class="data-row"></tr>');
+					var $tableCellKey     = $('<td></td>');
+					var $tableCellText    = $('<td></td>');
+					var $tableCellActions = $('<td></td>');
+					var $delAction        = $('<button></button>');
+
+					var keyCellId = 'idb-entry-' + result.value.key;
+
+					if (! htmlElementExists(keyCellId)) {
+						$tableCellKey
+							.text(result.value.key)
+							.attr('class', 'idx')
+							.attr('id', keyCellId);
+
+						$tableCellText
+							.text(result.value.text)
+							.attr('class', 'text');
+
+						$delAction
+							.text('D')
+							.attr('class', 'btn-delete')
+							.attr('id', 'del-'+result.value.key)
+							.attr('data-key', result.value.key);
+						$tableCellActions.append($delAction);
+
+						$tableRow
+							.append($tableCellKey)
+							.append($tableCellText)
+							.append($tableCellActions)
+							.attr('id', 'data-row-'+result.value.key);
+
+						$('#table-cnt').append($tableRow);
+						$('#no-data-row').hide();
+					}
+				});
+
+				window.setTimeout(function () {
+					initDeleteButtons();
+				}, 100);
+			});
+		}
+
+		function initDeleteButtons () {
+			console.log('init-del');
+			$('.btn-delete').on('click', function () {
+				var key = $(this).data('key');
+
+				Database.delete(key, function () {
+					$('#data-row-'+key).remove();
+				});
+			});
+		}
+
+
+		$(document).ready(function () {
+			Database.init('foomy-test', 4);
+			Database.setObjectStoreName('foobar-contents');
+
+			initSaveButton();
+			initShowButton();
+		});
+	</script>
+</head>
+<body>
+<div id="form">
+	<input type="text" id="some-data" placeholder="Type some weird text here...">
+	<button id="save-button">... and save it!</button>
+</div>
+
+<div id="data-list">
+
+	<table id="data-list-table">
+		<thead>
+		<tr>
+			<th>#</th>
+			<th>text</th>
+			<th>actions</th>
+		</tr>
+		</thead>
+		<tfoot>
+		<tr>
+			<td colspan="3">(Hier könnte Ihre Werbung stehen.)</td>
+		</tr>
+		</tfoot>
+		<tbody id="table-cnt">
+		<tr id="no-data-row">
+			<td colspan="3">Keine Daten da. <button id="show-data">Show 'em all!</button></td>
+		</tr>
+		</tbody>
+	</table>
+</div>
+</body>
+</html>

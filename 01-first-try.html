@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>IndexedDB - 1st try</title>
+
+	<script src="js/vendor/jquery/jquery-2.2.3.js"></script>
+
+	<script>
+		var objectStoreName = 'foobar-contents';
+		var idb;
+
+		function htmlElementExists (keyCellId) {
+			return ($('#'+keyCellId).length > 0);
+		}
+
+		// Datenbank initialisieren.
+		window.onload = function () {
+			window.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+			window.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
+			window.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange;
+
+			var idbOpenRequest = window.indexedDB.open('foomy-test', 4);
+
+			idbOpenRequest.onerror = function (event) {
+				if (console) {
+					console.log('Error while loading database.');
+				}
+			};
+
+			idbOpenRequest.onsuccess = function (event) {
+				idb = this.result;
+
+				if (console) {
+					console.log('Database initilized.');
+				}
+			};
+
+			idbOpenRequest.onupgradeneeded = function (event) {
+				var idb = this.result;
+
+				if (!idb.objectStoreNames.contains(objectStoreName)) {
+					var store = idb.createObjectStore(objectStoreName, {
+						keyPath: 'key',
+						autoIncrement: true
+					});
+				}
+
+				if (console) {
+					console.log('Upgrade needed.');
+				}
+			};
+
+		};
+
+		$(document).ready(function () {
+
+			$('#save-button').on('click', function () {
+				var someText = $('#some-data').val();
+
+				if ('' === someText) {
+					return;
+				}
+
+				var item = {
+					text: someText
+				};
+
+				var trans = idb.transaction([objectStoreName], 'readwrite');
+				var store = trans.objectStore(objectStoreName);
+				var request = store.put(item);
+
+				request.onsuccess = function (event) {
+					console.log('Eintrag ' + event.target.result + ' gespeichert.');
+					$('#some-data').val('');
+				};
+			});
+
+
+			$('#show-data').on('click', function () {
+				var trans = idb.transaction([objectStoreName], 'readonly');
+				var store = trans.objectStore(objectStoreName);
+
+				var range = window.IDBKeyRange.lowerBound(1); // Key range 0 .. n
+				var cursorRequest = store.openCursor(range);
+
+				// This event handler will is called for each record set in the db.
+				cursorRequest.onsuccess = function (event) {
+					var result = event.target.result;
+
+					if (result) {
+						var $tableCellKey     = $('<td></td>');
+						var $tableCellText    = $('<td></td>');
+						var $tableCellActions = $('<td></td>');
+						var $tableRow         = $('<tr class="data-row"></tr>');
+
+						var keyCellId = 'idb-entry-' + result.value.key;
+
+						if (! htmlElementExists(keyCellId)) {
+							$tableCellKey
+								.text(result.value.key)
+								.attr('id', keyCellId);
+							$tableCellText.text(result.value.text);
+							$tableRow.append($tableCellKey);
+							$tableRow.append($tableCellText);
+							$tableRow.append($tableCellActions);
+							$('#table-cnt').append($tableRow);
+							$('#no-data-row').hide();
+						}
+
+						result.continue();
+					}
+				};
+			});
+		});
+	</script>
+</head>
+<body>
+<div id="form">
+	<input type="text" id="some-data" placeholder="Type some weird text here...">
+	<button id="save-button">... and save it!</button>
+</div>
+
+<div id="data-list">
+	<button id="show-data">Show data!</button>
+
+	<table id="data-list-table">
+		<thead>
+		<tr>
+			<th>#</th>
+			<th>text</th>
+			<th>actions</th>
+		</tr>
+		</thead>
+		<tfoot>
+		<tr>
+			<td colspan="3">(Hier könnte Ihre Werbung stehen.)</td>
+		</tr>
+		</tfoot>
+		<tbody id="table-cnt">
+		<tr id="no-data-row">
+			<td colspan="3">Keine Daten vorhanden.</td>
+		</tr>
+		</tbody>
+	</table>
+</div>
+</body>
+</html>

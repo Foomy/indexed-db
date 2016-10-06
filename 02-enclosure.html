@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>IndexedDB - 1st try</title>
+
+	<style>
+		#form {
+			margin: 0 0 10px 0;
+		}
+
+		input[type=text] {
+			width: 200px;
+		}
+
+		#no-data-row td,
+		tfoot td {
+			padding: 10px;
+		}
+
+		td.idx {
+			text-align: right;
+		}
+
+		td.text {
+			padding: 0 0 0 20px;
+		}
+	</style>
+
+	<script src="js/utilities.js"></script>
+
+	<script src="js/vendor/jquery/jquery-2.2.3.js"></script>
+	<script src="js/Local.js"></script>
+	<script src="js/Database.js"></script>
+
+	<script>
+		var idb;
+
+		function htmlElementExists (elementId) {
+			return ($('#'+elementId).length > 0);
+		}
+
+		$(document).ready(function () {
+			Database.init('foomy-test', 4);
+			Database.setObjectStoreName('foobar-contents');
+
+			$('#save-button').on('click', function () {
+				var item,
+						someText = $('#some-data').val();
+
+				if ('' === someText) {
+					return;
+				}
+
+				item = {
+					text: someText
+				};
+
+				Database.insert(item, function (event) {
+					console.log('Eintrag ' + event.target.result + ' gespeichert.');
+					$('#some-data').val('');
+				});
+			});
+
+
+			$('#show-data').on('click', function () {
+				Database.getAllItems(function (result) {
+					var $tableCellKey     = $('<td></td>');
+					var $tableCellText    = $('<td></td>');
+					var $tableCellActions = $('<td></td>');
+					var $tableRow         = $('<tr class="data-row"></tr>');
+
+					var keyCellId = 'idb-entry-' + result.value.key;
+
+					if (! htmlElementExists(keyCellId)) {
+						$tableCellKey
+							.text(result.value.key)
+							.attr('class', 'idx')
+							.attr('id', keyCellId);
+						$tableCellText
+							.text(result.value.text)
+							.attr('class', 'text');
+						$tableRow.append($tableCellKey);
+						$tableRow.append($tableCellText);
+						$tableRow.append($tableCellActions);
+						$('#table-cnt').append($tableRow);
+						$('#no-data-row').hide();
+					}
+				});
+			});
+		});
+	</script>
+</head>
+<body>
+<div id="form">
+	<input type="text" id="some-data" placeholder="Type some weird text here...">
+	<button id="save-button">... and save it!</button>
+</div>
+
+<div id="data-list">
+	<button id="show-data">Show 'em all!</button>
+
+	<table id="data-list-table">
+		<thead>
+		<tr>
+			<th>#</th>
+			<th>text</th>
+			<th>actions</th>
+		</tr>
+		</thead>
+		<tfoot>
+		<tr>
+			<td colspan="3">(Hier könnte Ihre Werbung stehen.)</td>
+		</tr>
+		</tfoot>
+		<tbody id="table-cnt">
+		<tr id="no-data-row">
+			<td colspan="3">Keine Daten vorhanden.</td>
+		</tr>
+		</tbody>
+	</table>
+</div>
+</body>
+</html>
